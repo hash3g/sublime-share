@@ -1,3 +1,4 @@
+import os
 import sublime
 import sublime_plugin
 import urllib.request
@@ -10,6 +11,20 @@ class NoRedirection(urllib.request.HTTPRedirectHandler):
         return hdrs['Location']
 
 
+supportedLexer = {
+      'actionscript': 'as',
+      'python': 'python',
+      'c++': 'cpp',
+      'c#': 'csharp',
+      'java': 'java',
+      'html': 'html',
+      'lua': 'lua',
+      'javascript': 'js',
+      'xml': 'xml',
+      'haskell': 'haskell'
+}
+
+
 class PythonSharePasteCommand(sublime_plugin.WindowCommand):
 
     def run(self, *args):
@@ -19,12 +34,19 @@ class PythonSharePasteCommand(sublime_plugin.WindowCommand):
 
         first = True
         for selection in view.sel():
-            result += view.substr(sublime.Region(selection.begin(), selection.end()))
+            region = view.substr(sublime.Region(selection.begin(), selection.end()))
+            if not region.strip():
+                continue
+            result += region
             if not first:
                 result += '\n\n...\n\n'
             first = False
 
+        syntax = os.path.basename(view.settings().get('syntax'))
+        fn, ext = os.path.splitext(syntax)
+        lexer = supportedLexer.get(fn.lower(), '')
+
         opener = urllib.request.build_opener(NoRedirection)
-        data = urllib.parse.urlencode({'data': result, 'lexer': 'python'})
+        data = urllib.parse.urlencode({'data': result, 'lexer': lexer})
         r = opener.open("http://paste.in.ua", data.encode('utf-8'))
-        print(r)
+        sublime.set_clipboard(r)
